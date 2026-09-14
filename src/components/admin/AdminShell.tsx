@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -11,6 +12,8 @@ import {
   Search,
   ChevronRight,
   Mail,
+  Menu,
+  X,
 } from "lucide-react";
 import { AranyaMark } from "@/components/AranyaMark";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -48,21 +51,9 @@ function initialsForName(name: string | undefined): string {
   return "??";
 }
 
-function greetingForTime(): string {
-  const hour = new Date().getHours();
-
-  if (hour >= 5 && hour < 12) {
-    return "Good morning";
-  }
-
-  if (hour >= 12 && hour < 17) {
-    return "Good afternoon";
-  }
-
-  return "Good evening";
-}
-
 export function AdminShell() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const path = useRouterState({
     select: (s) => s.location.pathname,
   });
@@ -75,12 +66,14 @@ export function AdminShell() {
     )?.label ?? "Admin";
 
   const initials = initialsForName(user?.name);
-  const greeting = greetingForTime();
-  const adminName = user?.name?.trim() || "Admin";
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
 
   return (
     <div className="flex min-h-screen w-full bg-[#0e0c0a] text-cream">
-      {/* SIDEBAR */}
+      {/* DESKTOP SIDEBAR */}
       <aside className="hidden w-[248px] shrink-0 flex-col border-r border-cream/8 bg-[#161310] md:flex">
         <div className="flex items-center gap-3 px-6 py-6">
           <AranyaMark size={28} className="text-sand" />
@@ -171,7 +164,24 @@ export function AdminShell() {
 
       {/* MAIN */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-cream/8 bg-[#0e0c0a]/85 px-6 py-4 backdrop-blur">
+        <header className="sticky top-0 z-30 flex items-center gap-4 border-b border-cream/8 bg-[#0e0c0a]/85 px-4 py-4 backdrop-blur md:px-6">
+          {/* MOBILE MENU BUTTON */}
+          <button
+            type="button"
+            aria-label={
+              mobileMenuOpen ? "Close admin menu" : "Open admin menu"
+            }
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="rounded-md border border-cream/10 p-2 text-cream/60 transition hover:bg-cream/[0.05] hover:text-cream md:hidden"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-4 w-4" />
+            ) : (
+              <Menu className="h-4 w-4" />
+            )}
+          </button>
+
           <div className="flex items-baseline gap-3">
             <span className="text-[10px] uppercase tracking-[0.3em] text-cream/40">
               Console
@@ -179,13 +189,15 @@ export function AdminShell() {
 
             <ChevronRight className="h-3 w-3 text-cream/30" />
 
-            <span className="font-display text-lg">
-              {current}
-            </span>
+            <span className="font-display text-lg">{current}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <button className="rounded-md border border-cream/10 p-2 text-cream/60 transition hover:bg-cream/[0.05] hover:text-cream">
+            <button
+              type="button"
+              aria-label="Notifications"
+              className="rounded-md border border-cream/10 p-2 text-cream/60 transition hover:bg-cream/[0.05] hover:text-cream"
+            >
               <Bell className="h-4 w-4" />
             </button>
 
@@ -194,6 +206,77 @@ export function AdminShell() {
             </div>
           </div>
         </header>
+
+        {/* MOBILE ADMIN MENU */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-x-0 top-[65px] z-20 border-b border-cream/10 bg-[#161310] shadow-2xl md:hidden">
+            <div className="px-4 py-5">
+              <div className="mb-4 flex items-center gap-3 border-b border-cream/8 px-2 pb-5">
+                <AranyaMark size={30} className="text-sand" />
+
+                <div className="leading-tight">
+                  <div className="font-display text-lg tracking-[0.18em] uppercase">
+                    aranya
+                  </div>
+
+                  <div className="text-[9px] uppercase tracking-[0.28em] text-cream/40">
+                    Console
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-3 px-3 text-[10px] uppercase tracking-[0.28em] text-cream/35">
+                Workspace
+              </div>
+
+              <nav className="space-y-1">
+                {nav.map((item) => {
+                  const Icon = item.icon;
+
+                  const active = item.exact
+                    ? path === item.to
+                    : path.startsWith(item.to);
+
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to as any}
+                      onClick={closeMobileMenu}
+                      className={`flex items-center gap-3 rounded-md px-3 py-3 text-sm transition ${
+                        active
+                          ? "bg-terra/15 text-cream"
+                          : "text-cream/60 hover:bg-cream/[0.04] hover:text-cream"
+                      }`}
+                    >
+                      <Icon
+                        className={`h-4 w-4 ${
+                          active ? "text-terra" : "text-cream/45"
+                        }`}
+                      />
+
+                      {item.label}
+
+                      {active && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-terra" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="mt-5 border-t border-cream/8 pt-4">
+                <Link
+                  to="/"
+                  onClick={closeMobileMenu}
+                  className="flex items-center justify-between rounded-md px-3 py-3 text-[11px] uppercase tracking-[0.22em] text-terra/90 transition hover:bg-cream/[0.04] hover:text-terra"
+                >
+                  View site
+                  <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 overflow-x-hidden">
           <Outlet />
