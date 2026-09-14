@@ -1,0 +1,35 @@
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { currentUserQueryKey, useCurrentUser } from "@/hooks/use-auth";
+import { createAddress, deleteAddress, getAddresses, getProfile, updateAddress, updateProfile, type Address, type AddressInput } from "@/lib/api/user";
+
+export const Route = createFileRoute("/account")({ component: Account });
+const emptyAddress: AddressInput = { label: "", address_line1: "", address_line2: null, city: "", state: "", postal_code: "", country: "India", phone: "" };
+
+function Account() {
+  const current = useCurrentUser();
+  const client = useQueryClient();
+  const profile = useQuery({ queryKey: ["profile"], queryFn: getProfile, enabled: !!current.data });
+  const addresses = useQuery({ queryKey: ["addresses"], queryFn: getAddresses, enabled: !!current.data });
+  const [name, setName] = useState("");
+  const [addressForm, setAddressForm] = useState<AddressInput | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const save = useMutation({ mutationFn: updateProfile, onSuccess: ({ user }) => { client.setQueryData(currentUserQueryKey, user); client.invalidateQueries({ queryKey: ["profile"] }); } });
+  const create = useMutation({ mutationFn: createAddress, onSuccess: () => { client.invalidateQueries({ queryKey: ["addresses"] }); setAddressForm(null); } });
+  const update = useMutation({ mutationFn: ({ id, input }: { id: string; input: AddressInput }) => updateAddress(id, input), onSuccess: () => { client.invalidateQueries({ queryKey: ["addresses"] }); setAddressForm(null); setEditingId(null); } });
+  const remove = useMutation({ mutationFn: deleteAddress, onSuccess: () => client.invalidateQueries({ queryKey: ["addresses"] }) });
+  if (current.isPending) return <div className="min-h-screen bg-umber" />;
+  if (!current.data) return <Navigate to="/login" />;
+  const user = profile.data?.user ?? current.data;
+  const mutationError = create.error ?? update.error ?? remove.error;
+  const beginEdit = (address: Address) => { setEditingId(address.id); setAddressForm({ label: address.label, address_line1: address.address_line1, address_line2: address.address_line2, city: address.city, state: address.state, postal_code: address.postal_code, country: address.country, phone: address.phone }); };
+  return <div className="min-h-screen bg-umber px-6 py-28 text-cream md:px-10"><div className="mx-auto max-w-3xl space-y-8"><div><p className="text-xs uppercase tracking-[.3em] text-sand">Your account</p><h1 className="mt-3 font-display text-4xl">A quieter corner.</h1></div><section className="rounded border border-cream/10 bg-walnut/30 p-6"><h2 className="font-display text-2xl">Profile</h2><label className="mt-5 block text-sm">Name<input defaultValue={user.name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full rounded border border-cream/10 bg-umber p-3" /></label><p className="mt-4 text-sm text-cream/55">{user.email} · {user.role === 1 ? "Admin" : "Member"}</p>{save.isError && <p className="mt-3 text-rose-300">{save.error.message}</p>}<button disabled={save.isPending || !name.trim()} onClick={() => save.mutate(name)} className="mt-5 rounded-full bg-cream px-5 py-2 text-xs uppercase tracking-[.2em] text-umber">{save.isPending ? "Saving…" : "Save profile"}</button></section><section className="rounded border border-cream/10 bg-walnut/30 p-6"><div className="flex items-center justify-between gap-4"><h2 className="font-display text-2xl">Addresses</h2><button onClick={() => { setEditingId(null); setAddressForm(emptyAddress); }} className="rounded-full border border-sand px-4 py-2 text-xs uppercase tracking-[.15em] text-sand">Add address</button></div>{addressForm && <AddressForm value={addressForm} pending={create.isPending || update.isPending} error={create.error ?? update.error} onChange={setAddressForm} onCancel={() => { setAddressForm(null); setEditingId(null); }} onSubmit={(input) => editingId ? update.mutate({ id: editingId, input }) : create.mutate(input)} />}{mutationError && !addressForm && <p className="mt-4 text-rose-300">{mutationError.message}</p>}{addresses.isPending ? <p className="mt-4 text-cream/55">Loading addresses…</p> : addresses.isError ? <p className="mt-4 text-rose-300">{addresses.error.message}</p> : !addresses.data?.addresses.length ? <p className="mt-4 text-cream/55">No saved addresses yet.</p> : <div className="mt-4 space-y-3">{addresses.data.addresses.map((address) => <AddressCard key={address.id} address={address} onEdit={() => beginEdit(address)} onDelete={() => remove.mutate(address.id)} deleting={remove.isPending && remove.variables === address.id} />)}</div>}</section></div></div>;
+}
+
+function AddressForm({ value, pending, error, onChange, onCancel, onSubmit }: { value: AddressInput; pending: boolean; error: Error | null; onChange: (value: AddressInput) => void; onCancel: () => void; onSubmit: (value: AddressInput) => void }) {
+  const field = (key: keyof AddressInput, label: string, required = true) => <label className="block text-sm">{label}<input required={required} value={value[key] ?? ""} onChange={(event) => onChange({ ...value, [key]: event.target.value || (key === "address_line2" ? null : "") })} className="mt-2 w-full rounded border border-cream/10 bg-umber p-3" /></label>;
+  return <form onSubmit={(event) => { event.preventDefault(); onSubmit(value); }} className="mt-5 space-y-4 border-y border-cream/10 py-5"><div className="grid gap-4 sm:grid-cols-2">{field("label", "Label")}{field("phone", "Phone")}{field("address_line1", "Address line 1")}{field("address_line2", "Address line 2", false)}{field("city", "City")}{field("state", "State")}{field("postal_code", "Postal code")}{field("country", "Country")}</div>{error && <p className="text-sm text-rose-300">{error.message}</p>}<div className="flex gap-3"><button disabled={pending} className="rounded-full bg-cream px-5 py-2 text-xs uppercase tracking-[.15em] text-umber">{pending ? "Saving…" : "Save address"}</button><button type="button" onClick={onCancel} className="rounded-full border border-cream/20 px-5 py-2 text-xs uppercase tracking-[.15em]">Cancel</button></div></form>;
+}
+
+function AddressCard({ address, onEdit, onDelete, deleting }: { address: Address; onEdit: () => void; onDelete: () => void; deleting: boolean }) { return <div className="flex items-start justify-between gap-4 border-t border-cream/10 pt-3 text-sm"><div><strong>{address.label}</strong><p className="mt-1 text-cream/60">{address.address_line1}{address.address_line2 ? `, ${address.address_line2}` : ""}, {address.city}, {address.state} {address.postal_code}</p><p className="mt-1 text-cream/45">{address.country} · {address.phone}</p></div><div className="flex shrink-0 gap-3"><button onClick={onEdit} className="text-sand">Edit</button><button disabled={deleting} onClick={onDelete} className="text-rose-300">{deleting ? "Deleting…" : "Delete"}</button></div></div>; }
