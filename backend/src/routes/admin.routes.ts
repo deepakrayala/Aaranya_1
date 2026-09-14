@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getAdminAnalytics,
+  getAdminContactMessages,
   getAdminCustomer,
   getAdminDashboard,
   getAdminTest,
@@ -18,3 +19,4 @@ adminRouter.get("/dashboard", getAdminDashboard);
 adminRouter.get("/customers", listAdminCustomers);
 adminRouter.get("/customers/:id", getAdminCustomer);
 adminRouter.get("/analytics", getAdminAnalytics);
+adminRouter.get("/contact-messages", getAdminContactMessages);
