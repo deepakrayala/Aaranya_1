@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, RefreshCw } from "lucide-react";
+import { Mail, RefreshCw, ExternalLink } from "lucide-react";
 import { getAdminContactMessages } from "@/lib/api/messages";
 
 export const Route = createFileRoute("/admin/messages")({
@@ -12,6 +12,30 @@ function AdminMessages() {
     queryKey: ["admin", "contact-messages"],
     queryFn: getAdminContactMessages,
   });
+
+  const openOutlookReply = (
+    email: string,
+    subject: string,
+    name: string,
+  ) => {
+    const outlookUrl = new URL(
+      "https://outlook.office.com/mail/deeplink/compose",
+    );
+
+    outlookUrl.searchParams.set("to", email);
+    outlookUrl.searchParams.set(
+      "subject",
+      subject.toLowerCase().startsWith("re:")
+        ? subject
+        : `Re: ${subject}`,
+    );
+    outlookUrl.searchParams.set(
+      "body",
+      `Hi ${name},\n\n\n\nRegards,\nAranya Pure Living`,
+    );
+
+    window.open(outlookUrl.toString(), "_blank", "noopener,noreferrer");
+  };
 
   if (messages.isPending) {
     return (
@@ -48,7 +72,6 @@ function AdminMessages() {
 
   return (
     <div className="space-y-8 px-6 py-8 md:px-10">
-      {/* HEADER */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
@@ -74,7 +97,6 @@ function AdminMessages() {
         </div>
       </div>
 
-      {/* EMPTY STATE */}
       {contactMessages.length === 0 ? (
         <div className="rounded-lg border border-cream/8 bg-[#161310] px-6 py-16 text-center">
           <Mail className="mx-auto h-8 w-8 text-cream/25" />
@@ -88,7 +110,6 @@ function AdminMessages() {
           </p>
         </div>
       ) : (
-        /* MESSAGES */
         <div className="space-y-4">
           {contactMessages.map((message) => (
             <article
@@ -96,7 +117,6 @@ function AdminMessages() {
               className="rounded-lg border border-cream/8 bg-[#161310] p-5 md:p-6"
             >
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                {/* CUSTOMER */}
                 <div>
                   <div className="font-display text-xl text-cream">
                     {message.name}
@@ -113,7 +133,6 @@ function AdminMessages() {
                   )}
                 </div>
 
-                {/* DATE */}
                 <div className="text-xs text-cream/40 lg:text-right">
                   {new Date(message.created_at).toLocaleString("en-IN", {
                     dateStyle: "medium",
@@ -123,14 +142,27 @@ function AdminMessages() {
                 </div>
               </div>
 
-              {/* SUBJECT */}
-              <div className="mt-5">
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <span className="inline-flex rounded-full border border-sand/20 bg-sand/5 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-sand">
                   {message.subject}
                 </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    openOutlookReply(
+                      message.email,
+                      message.subject,
+                      message.name,
+                    )
+                  }
+                  className="inline-flex items-center gap-2 rounded-md border border-terra/30 bg-terra/10 px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-terra transition hover:bg-terra/20 hover:text-cream"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Reply via Outlook
+                </button>
               </div>
 
-              {/* MESSAGE */}
               <div className="mt-5 border-t border-cream/8 pt-5">
                 <p className="whitespace-pre-wrap text-sm leading-7 text-cream/70">
                   {message.message}
