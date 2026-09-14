@@ -410,3 +410,33 @@ export async function getAdminContactMessages(
     messages: result.rows,
   });
 }
+
+export async function deleteAdminContactMessage(
+  request: Request<{ id: string }>,
+  response: Response,
+): Promise<void> {
+  if (!uuid.test(request.params.id)) {
+    response.status(400).json({
+      error: "Invalid message id",
+    });
+    return;
+  }
+
+  const result = await db.query(
+    `DELETE FROM contact_messages
+     WHERE id = $1
+     RETURNING id`,
+    [request.params.id],
+  );
+
+  if (!result.rows[0]) {
+    response.status(404).json({
+      error: "Message not found",
+    });
+    return;
+  }
+
+  response.json({
+    message: "Contact message deleted successfully",
+  });
+}
