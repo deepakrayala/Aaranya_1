@@ -74,7 +74,7 @@ function setSessionCookie(response: Response, token: string): void {
   response.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: env.nodeEnv === "production",
-    sameSite: "lax",
+    sameSite: env.nodeEnv === "production" ? "none" : "lax",    
     maxAge: SESSION_LIFETIME_MS,
     path: "/",
   });
@@ -84,7 +84,7 @@ function clearSessionCookie(response: Response): void {
   response.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
     secure: env.nodeEnv === "production",
-    sameSite: "lax",
+    sameSite: env.nodeEnv === "production" ? "none" : "lax",
     path: "/",
   });
 }
