@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { adminCatalogRouter, categoryRouter, productRouter } from "./routes/catalog.routes.js";
 import { healthRouter } from "./routes/health.routes.js";
 import { adminOrderRouter, orderRouter } from "./routes/order.routes.js";
+import { contactRouter } from "./routes/contact.routes.js";
 import { userRouter } from "./routes/user.routes.js";
 
 export const app = express();
@@ -34,6 +35,6 @@ app.use("/api/v1/categories", categoryRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/products", productRouter);
 app.use("/api/v1/users", userRouter);
-
+app.use("/api/v1/contact-messages", contactRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
