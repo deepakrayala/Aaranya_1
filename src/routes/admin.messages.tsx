@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Mail, RefreshCw, ExternalLink } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Mail,
+  RefreshCw,
+  ExternalLink,
+  Trash2,
+} from "lucide-react";
 import { getAdminContactMessages } from "@/lib/api/messages";
 
 export const Route = createFileRoute("/admin/messages")({
@@ -8,6 +13,8 @@ export const Route = createFileRoute("/admin/messages")({
 });
 
 function AdminMessages() {
+  const queryClient = useQueryClient();
+
   const messages = useQuery({
     queryKey: ["admin", "contact-messages"],
     queryFn: getAdminContactMessages,
@@ -35,6 +42,47 @@ function AdminMessages() {
     );
 
     window.open(outlookUrl.toString(), "_blank", "noopener,noreferrer");
+  };
+
+  const handleDelete = async (id: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this message?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const base =
+        import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+
+      const response = await fetch(
+        `${base}/api/v1/admin/contact-messages/${id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
+
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          body?.error ?? "Unable to delete message",
+        );
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "contact-messages"],
+      });
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete message",
+      );
+    }
   };
 
   if (messages.isPending) {
@@ -93,7 +141,9 @@ function AdminMessages() {
 
         <div className="rounded-full border border-cream/10 bg-cream/[0.03] px-4 py-2 text-xs text-cream/55">
           {contactMessages.length}{" "}
-          {contactMessages.length === 1 ? "message" : "messages"}
+          {contactMessages.length === 1
+            ? "message"
+            : "messages"}
         </div>
       </div>
 
@@ -134,7 +184,9 @@ function AdminMessages() {
                 </div>
 
                 <div className="text-xs text-cream/40 lg:text-right">
-                  {new Date(message.created_at).toLocaleString("en-IN", {
+                  {new Date(
+                    message.created_at,
+                  ).toLocaleString("en-IN", {
                     dateStyle: "medium",
                     timeStyle: "short",
                     timeZone: "Asia/Kolkata",
@@ -160,6 +212,15 @@ function AdminMessages() {
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Reply via Outlook
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDelete(message.id)}
+                  className="inline-flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-red-400 transition hover:bg-red-500/20 hover:text-red-300"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
                 </button>
               </div>
 
